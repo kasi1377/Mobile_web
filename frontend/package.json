@@ -1,0 +1,19 @@
+{
+  "name": "velion-dkn-frontend",
+  "version": "1.0.0",
+  "description": "Velion Dynamics DKN - React Frontend",
+  "scripts": {
+    "start": "npx http-server . -p 3000 -o",
+    "dev": "npx http-server . -p 3000"
+  },
+  "keywords": [
+    "react",
+    "knowledge-management",
+    "frontend"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
