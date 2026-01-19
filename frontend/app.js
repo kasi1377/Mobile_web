@@ -219,9 +219,16 @@ function AuthPage({ onLogin }) {
       if (data.error) {
         setError(data.error);
       } else {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        onLogin(data.token, data.user);
+        // Clear form
+        setSignupName('');
+        setSignupEmail('');
+        setSignupPassword('');
+        setSignupRole('Consultant');
+        
+        // Switch to login tab
+        setActiveTab('login');
+        setLoginEmail(signupEmail);
+        setError('');
       }
     } catch (err) {
       setError('Signup failed. Please try again.');

@@ -40,7 +40,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await db.findOne('consultants', { email });
+    const user = await db.findOne('users', { email });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -81,7 +81,7 @@ app.post('/api/auth/signup', async (req, res) => {
     }
 
     // Check if user exists
-    const existingUser = await db.findOne('consultants', { email });
+    const existingUser = await db.findOne('users', { email });
     if (existingUser) {
       return res.status(400).json({ error: 'Email already registered' });
     }
@@ -89,21 +89,18 @@ app.post('/api/auth/signup', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
-    const newUser = await db.insert('consultants', {
+    // Create user in users table only
+    const newUser = await db.insert('users', {
       name,
       email,
       password: hashedPassword,
       role: role || 'Consultant',
-      department: 'General',
-      yearsOfExperience: 0,
-      points: 0,
-      contributions: 0
+      isActive: 1
     });
 
     // Create leaderboard entry
     await db.insert('leaderboard', {
-      consultantId: newUser.id,
+      userId: newUser.id,
       name: newUser.name,
       role: newUser.role,
       points: 0,
@@ -130,7 +127,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
 // Get current user
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
-  const user = await db.findById('consultants', req.user.id);
+  const user = await db.findById('users', req.user.id);
   
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
@@ -184,13 +181,9 @@ app.post('/api/knowledge-assets', authenticateToken, async (req, res) => {
       updatedAt: new Date().toISOString()
     });
 
-    // Update user contributions and leaderboard
+    // Update leaderboard submissions only
     await db.run(`
-      UPDATE consultants SET contributions = contributions + 1 WHERE id = ?
-    `, [req.user.id]);
-    
-    await db.run(`
-      UPDATE leaderboard SET submissions = submissions + 1 WHERE consultantId = ?
+      UPDATE leaderboard SET submissions = submissions + 1 WHERE userId = ?
     `, [req.user.id]);
 
     // Create audit entry
@@ -246,7 +239,7 @@ app.post('/api/knowledge-assets/:id/review', authenticateToken, async (req, res)
     }
 
     // Check if user is a reviewer
-    const user = await db.findById('consultants', req.user.id);
+    const user = await db.findById('users', req.user.id);
     if (user.role !== 'Knowledge Champion' && user.role !== 'Senior Consultant' && user.role !== 'Reviewer') {
       return res.status(403).json({ error: 'Only Reviewers, Knowledge Champions and Senior Consultants can review assets' });
     }
@@ -272,19 +265,15 @@ app.post('/api/knowledge-assets/:id/review', authenticateToken, async (req, res)
 
     // Update leaderboard if approved
     if (status === 'approved') {
-      const creatorLeaderboard = await db.findOne('leaderboard', { consultantId: asset.authorId });
+      const creatorLeaderboard = await db.findOne('leaderboard', { userId: asset.authorId });
       if (creatorLeaderboard) {
         await db.run(`
           UPDATE leaderboard 
           SET points = points + 50, reviews = reviews + 1 
-          WHERE consultantId = ?
+          WHERE userId = ?
         `, [asset.authorId]);
         
-        await db.run(`
-          UPDATE consultants 
-          SET points = points + 50 
-          WHERE id = ?
-        `, [asset.authorId]);
+        // Points are tracked via leaderboard; no consultants table update
       }
     }
 
@@ -334,43 +323,19 @@ app.delete('/api/knowledge-assets/:id', authenticateToken, async (req, res) => {
 });
 
 // ==================== USER ROUTES ====================
-
-// Get all consultants
-app.get('/api/consultants', authenticateToken, async (req, res) => {
-  const consultants = db.findAll('consultants').map(({ password, ...user }) => user);
-  res.json(consultants);
-});
-
-// Get consultant by ID
-app.get('/api/consultants/:id', authenticateToken, async (req, res) => {
-  const consultant = db.findById('consultants', req.params.id);
-  
-  if (!consultant) {
-    return res.status(404).json({ error: 'Consultant not found' });
-  }
-
-  const { password, ...userWithoutPassword } = consultant;
-  res.json(userWithoutPassword);
-});
-
-// Search consultants
-app.get('/api/consultants/search/:term', authenticateToken, async (req, res) => {
-  const results = db.search('consultants', req.params.term)
-    .map(({ password, ...user }) => user);
-  res.json(results);
-});
+// Consultants endpoints removed; using Users exclusively
 
 // ==================== LEADERBOARD ROUTES ====================
 
 // Get leaderboard
 app.get('/api/leaderboard', authenticateToken, async (req, res) => {
-  const entries = db.findAll('leaderboard')
-    .sort((a, b) => b.points - a.points);
+  const entries = await db.findAll('leaderboard');
+  const sortedEntries = entries.sort((a, b) => b.points - a.points);
   
   const leaderboard = [];
-  for (let index = 0; index < entries.length; index++) {
-    const entry = entries[index];
-    const user = await db.findById('consultants', entry.consultantId);
+  for (let index = 0; index < sortedEntries.length; index++) {
+    const entry = sortedEntries[index];
+    const user = await db.findById('users', entry.userId);
     leaderboard.push({
       ...entry,
       rank: index + 1,
@@ -406,7 +371,7 @@ app.post('/api/trainings/:id/complete', authenticateToken, async (req, res) => {
     const updated = await db.update('trainings', req.params.id, { completedBy });
     
     // Award points
-    const leaderboard = db.findOne('leaderboard', { userID: req.user.id });
+    const leaderboard = await db.findOne('leaderboard', { userId: req.user.id });
     if (leaderboard) {
       await db.update('leaderboard', leaderboard.id, {
         points: (leaderboard.points || 0) + 10
@@ -423,18 +388,11 @@ app.post('/api/trainings/:id/complete', authenticateToken, async (req, res) => {
 
 // Get AI recommendations for assets
 app.get('/api/recommendations/assets', authenticateToken, async (req, res) => {
-  const user = await db.findById('consultants', req.user.id);
-  const allAssets = db.findMany('knowledgeAssets', { status: 'approved' });
+  const user = await db.findById('users', req.user.id);
+  const allAssets = await db.findMany('knowledgeAssets', { status: 'approved' });
   
-  // Simple recommendation based on user expertise
-  const recommended = allAssets.filter(asset => {
-    return asset.tags.some(tag => 
-      user.expertise.some(exp => 
-        exp.toLowerCase().includes(tag.toLowerCase()) || 
-        tag.toLowerCase().includes(exp.toLowerCase())
-      )
-    );
-  }).slice(0, 5);
+  // Placeholder: return latest approved assets (no expertise field on users)
+  const recommended = (allAssets || []).slice(0, 5);
   
   res.json(recommended);
 });
@@ -479,11 +437,11 @@ app.get('/api/admin/documents', authenticateToken, async (req, res) => {
   }
 
   const assets = await db.findAll('knowledgeAssets');
-  const consultants = db.findAll('consultants');
+  const users = await db.findAll('users');
   
-  // Add creator name to each asset
+  // Add creator name from users by authorId
   const assetsWithCreator = assets.map(asset => {
-    const creator = consultants.find(c => c.id === asset.creatorID);
+    const creator = users.find(u => u.id === asset.authorId);
     return {
       ...asset,
       creatorName: creator ? creator.name : 'Unknown'
@@ -571,13 +529,37 @@ app.get('/api/statistics', authenticateToken, async (req, res) => {
     totalAssets: await db.count('knowledgeAssets'),
     approvedAssets: await db.count('knowledgeAssets', { status: 'approved' }),
     pendingAssets: await db.count('knowledgeAssets', { status: 'pending' }),
-    totalConsultants: await db.count('consultants'),
+    totalConsultants: await db.count('users'),
     totalTrainings: await db.count('trainings'),
     totalDownloads: 0,
     totalViews: 0
   };
   
   res.json(stats);
+});
+
+// ==================== ADMIN ROUTES ====================
+
+// Get all database tables data (for admin panel)
+app.get('/api/admin/database', async (req, res) => {
+  try {
+    const tables = {
+      users: await db.findAll('users'),
+      consultants: await db.findAll('consultants'),
+      knowledgeAssets: await db.findAll('knowledgeAssets'),
+      trainings: await db.findAll('trainings'),
+      leaderboard: await db.findAll('leaderboard'),
+      auditEntries: await db.findAll('auditEntries'),
+      aiRecommendations: await db.findAll('aiRecommendations'),
+      repository: await db.findAll('repository'),
+      metadata: await db.findAll('metadata')
+    };
+    
+    res.json(tables);
+  } catch (error) {
+    console.error('Database fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch database data' });
+  }
 });
 
 // Start server

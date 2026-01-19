@@ -99,7 +99,7 @@ class SQLiteDatabase {
       this.db.run(`
         CREATE TABLE IF NOT EXISTS leaderboard (
           id TEXT PRIMARY KEY,
-          consultantId TEXT UNIQUE NOT NULL,
+          userId TEXT UNIQUE NOT NULL,
           name TEXT NOT NULL,
           role TEXT,
           points INTEGER DEFAULT 0,
@@ -179,30 +179,48 @@ class SQLiteDatabase {
     return new Promise((resolve, reject) => {
       const id = record.id || this.generateId();
       const now = new Date().toISOString();
-      
+
       // Only add createdAt/updatedAt for tables that support them
       let data = { id, ...record };
       if (table !== 'auditEntries' && table !== 'aiRecommendations') {
         data.createdAt = record.createdAt || now;
         data.updatedAt = now;
       }
-      
-      const keys = Object.keys(data);
-      const values = keys.map(key => {
-        const val = data[key];
-        return (typeof val === 'object' && val !== null) ? JSON.stringify(val) : val;
-      });
 
-      const placeholders = keys.map(() => '?').join(', ');
-      const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`;
-
-      this.db.run(sql, values, function(err) {
+      // Filter to only columns that actually exist in the table
+      this.db.all(`PRAGMA table_info(${table});`, (err, rows) => {
         if (err) {
-          console.error(`Error inserting into ${table}:`, err);
-          reject(err);
-        } else {
-          resolve(data);
+          console.error(`Error reading schema for ${table}:`, err);
+          return reject(err);
         }
+        const tableInfo = rows || [];
+        const columns = new Set(tableInfo.map(r => r.name));
+
+        // Handle legacy schemas gracefully (e.g., leaderboard requiring consultantId NOT NULL)
+        const hasConsultantId = tableInfo.some(r => r.name === 'consultantId');
+        const consultantIdNotNull = tableInfo.some(r => r.name === 'consultantId' && r.notnull === 1);
+        if (table === 'leaderboard' && hasConsultantId && consultantIdNotNull) {
+          if (data.userId && !data.consultantId) {
+            data.consultantId = data.userId;
+          }
+        }
+        const keys = Object.keys(data).filter(k => columns.has(k));
+        const values = keys.map(key => {
+          const val = data[key];
+          return (typeof val === 'object' && val !== null) ? JSON.stringify(val) : val;
+        });
+
+        const placeholders = keys.map(() => '?').join(', ');
+        const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`;
+
+        this.db.run(sql, values, function(err) {
+          if (err) {
+            console.error(`Error inserting into ${table}:`, err);
+            reject(err);
+          } else {
+            resolve(data);
+          }
+        });
       });
     });
   }
