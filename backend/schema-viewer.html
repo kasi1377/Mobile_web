@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Schema Viewer - Velion DKN</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      margin-bottom: 30px;
+      border-radius: 4px;
+    }
+
+    .info-box strong {
+      color: #1976d2;
+    }
+
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .table-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #e0e0e0;
+      transition: all 0.3s ease;
+    }
+
+    .table-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      border-color: #667eea;
+    }
+
+    .table-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      font-weight: bold;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .table-icon {
+      font-size: 24px;
+    }
+
+    .table-body {
+      padding: 15px;
+    }
+
+    .column {
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      background: white;
+      border-radius: 4px;
+      border-left: 3px solid #667eea;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+
+    .column-name {
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .column-type {
+      color: #666;
+      margin-left: 10px;
+    }
+
+    .column-constraint {
+      background: #fff3e0;
+      color: #e65100;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      margin-left: 10px;
+      font-weight: bold;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .relationships {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+    }
+
+    .relationships h2 {
+      color: #667eea;
+      margin-bottom: 15px;
+    }
+
+    .relationship-item {
+      background: white;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      border-left: 4px solid #4caf50;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #764ba2;
+    }
+
+    .search-box {
+      flex: 1;
+      padding: 10px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 14px;
+      min-width: 250px;
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .diagram {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-top: 20px;
+      border: 2px solid #e0e0e0;
+    }
+
+    .diagram pre {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #333;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗄️ Database Schema Viewer</h1>
+    <p class="subtitle">Velion Dynamics - Digital Knowledge Network</p>
+
+    <div class="info-box">
+      <strong>Database Type:</strong> SQLite3 (Embedded)<br>
+      <strong>Database File:</strong> backend/dkn.db<br>
+      <strong>Auto-Initialization:</strong> Enabled (on server start)<br>
+      <strong>Last Schema Update:</strong> January 21, 2026
+    </div>
+
+    <div class="controls">
+      <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search tables and columns..." oninput="filterTables()">
+      <button onclick="showAllTables()">Show All</button>
+      <button onclick="exportSchema()">Export Schema</button>
+      <button onclick="toggleDiagram()">Toggle Diagram</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-value">9</div>
+        <div class="stat-label">Total Tables</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">75+</div>
+        <div class="stat-label">Total Columns</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">5</div>
+        <div class="stat-label">Indexed Tables</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">SQLite</div>
+        <div class="stat-label">Database Engine</div>
+      </div>
+    </div>
+
+    <div class="tables-grid" id="tablesGrid">
+      <!-- Users Table -->
+      <div class="table-card" data-table="users">
+        <div class="table-header">
+          <span class="table-icon">👤</span>
+          <span>Users</span>
+        </div>
+        <div class="table-body">
+          <div class="column">
+            <span class="column-name">id</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">PRIMARY KEY</span>
+          </div>
+          <div class="column">
+            <span class="column-name">email</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">UNIQUE</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">password</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">name</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">role</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">isActive</span>
+            <span class="column-type">INTEGER</span>
+            <span class="column-constraint">DEFAULT 1</span>
+          </div>
+          <div class="column">
+            <span class="column-name">lastLogin</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">createdAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">updatedAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Consultants Table -->
+      <div class="table-card" data-table="consultants">
+        <div class="table-header">
+          <span class="table-icon">👨‍💼</span>
+          <span>Consultants</span>
+        </div>
+        <div class="table-body">
+          <div class="column">
+            <span class="column-name">id</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">PRIMARY KEY</span>
+          </div>
+          <div class="column">
+            <span class="column-name">name</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">email</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">UNIQUE</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">password</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">role</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">department</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">yearsOfExperience</span>
+            <span class="column-type">INTEGER</span>
+          </div>
+          <div class="column">
+            <span class="column-name">points</span>
+            <span class="column-type">INTEGER</span>
+            <span class="column-constraint">DEFAULT 0</span>
+          </div>
+          <div class="column">
+            <span class="column-name">contributions</span>
+            <span class="column-type">INTEGER</span>
+            <span class="column-constraint">DEFAULT 0</span>
+          </div>
+          <div class="column">
+            <span class="column-name">certifications</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">createdAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">updatedAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Knowledge Assets Table -->
+      <div class="table-card" data-table="knowledgeAssets">
+        <div class="table-header">
+          <span class="table-icon">📚</span>
+          <span>Knowledge Assets</span>
+        </div>
+        <div class="table-body">
+          <div class="column">
+            <span class="column-name">id</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">PRIMARY KEY</span>
+          </div>
+          <div class="column">
+            <span class="column-name">title</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">description</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">category</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">content</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">author</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">authorId</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">status</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">DEFAULT 'pending'</span>
+          </div>
+          <div class="column">
+            <span class="column-name">reviewStatus</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">DEFAULT 'pending'</span>
+          </div>
+          <div class="column">
+            <span class="column-name">reviewedBy</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">reviewComments</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">tags</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">createdAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">updatedAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trainings Table -->
+      <div class="table-card" data-table="trainings">
+        <div class="table-header">
+          <span class="table-icon">🎓</span>
+          <span>Trainings</span>
+        </div>
+        <div class="table-body">
+          <div class="column">
+            <span class="column-name">id</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">PRIMARY KEY</span>
+          </div>
+          <div class="column">
+            <span class="column-name">title</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">description</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">content</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">instructor</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">duration</span>
+            <span class="column-type">INTEGER</span>
+          </div>
+          <div class="column">
+            <span class="column-name">level</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">status</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">DEFAULT 'published'</span>
+          </div>
+          <div class="column">
+            <span class="column-name">tags</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">createdAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">updatedAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard Table -->
+      <div class="table-card" data-table="leaderboard">
+        <div class="table-header">
+          <span class="table-icon">🏆</span>
+          <span>Leaderboard</span>
+        </div>
+        <div class="table-body">
+          <div class="column">
+            <span class="column-name">id</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">PRIMARY KEY</span>
+          </div>
+          <div class="column">
+            <span class="column-name">userId</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">UNIQUE</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">name</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">role</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">points</span>
+            <span class="column-type">INTEGER</span>
+            <span class="column-constraint">DEFAULT 0</span>
+          </div>
+          <div class="column">
+            <span class="column-name">submissions</span>
+            <span class="column-type">INTEGER</span>
+            <span class="column-constraint">DEFAULT 0</span>
+          </div>
+          <div class="column">
+            <span class="column-name">reviews</span>
+            <span class="column-type">INTEGER</span>
+            <span class="column-constraint">DEFAULT 0</span>
+          </div>
+          <div class="column">
+            <span class="column-name">rank</span>
+            <span class="column-type">INTEGER</span>
+          </div>
+          <div class="column">
+            <span class="column-name">createdAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">updatedAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit Entries Table -->
+      <div class="table-card" data-table="auditEntries">
+        <div class="table-header">
+          <span class="table-icon">📝</span>
+          <span>Audit Entries</span>
+        </div>
+        <div class="table-body">
+          <div class="column">
+            <span class="column-name">id</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">PRIMARY KEY</span>
+          </div>
+          <div class="column">
+            <span class="column-name">action</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">userId</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">userName</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">targetType</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">targetId</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">changes</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">timestamp</span>
+            <span class="column-type">TEXT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Recommendations Table -->
+      <div class="table-card" data-table="aiRecommendations">
+        <div class="table-header">
+          <span class="table-icon">🤖</span>
+          <span>AI Recommendations</span>
+        </div>
+        <div class="table-body">
+          <div class="column">
+            <span class="column-name">id</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">PRIMARY KEY</span>
+          </div>
+          <div class="column">
+            <span class="column-name">consultantId</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">title</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">description</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">type</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">priority</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">status</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">DEFAULT 'pending'</span>
+          </div>
+          <div class="column">
+            <span class="column-name">createdAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">updatedAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Repository Table -->
+      <div class="table-card" data-table="repository">
+        <div class="table-header">
+          <span class="table-icon">📦</span>
+          <span>Repository</span>
+        </div>
+        <div class="table-body">
+          <div class="column">
+            <span class="column-name">id</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">PRIMARY KEY</span>
+          </div>
+          <div class="column">
+            <span class="column-name">assetId</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">UNIQUE</span>
+          </div>
+          <div class="column">
+            <span class="column-name">title</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">category</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">status</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">createdAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">updatedAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metadata Table -->
+      <div class="table-card" data-table="metadata">
+        <div class="table-header">
+          <span class="table-icon">⚙️</span>
+          <span>Metadata</span>
+        </div>
+        <div class="table-body">
+          <div class="column">
+            <span class="column-name">id</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">PRIMARY KEY</span>
+          </div>
+          <div class="column">
+            <span class="column-name">key</span>
+            <span class="column-type">TEXT</span>
+            <span class="column-constraint">UNIQUE</span>
+            <span class="column-constraint">NOT NULL</span>
+          </div>
+          <div class="column">
+            <span class="column-name">value</span>
+            <span class="column-type">TEXT</span>
+          </div>
+          <div class="column">
+            <span class="column-name">updatedAt</span>
+            <span class="column-type">TEXT</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="relationships">
+      <h2>🔗 Table Relationships</h2>
+      <div class="relationship-item">
+        users.id ←→ leaderboard.userId (One-to-One)
+      </div>
+      <div class="relationship-item">
+        users.id ←→ knowledgeAssets.authorId (One-to-Many)
+      </div>
+      <div class="relationship-item">
+        users.id ←→ auditEntries.userId (One-to-Many)
+      </div>
+      <div class="relationship-item">
+        consultants.id ←→ aiRecommendations.consultantId (One-to-Many)
+      </div>
+      <div class="relationship-item">
+        knowledgeAssets.id ←→ repository.assetId (One-to-One)
+      </div>
+    </div>
+
+    <div class="diagram" id="erDiagram" style="display: none;">
+      <h2>Entity-Relationship Diagram</h2>
+      <pre>
+┌───────────────────┐
+│      USERS        │
+├───────────────────┤
+│ + id (PK)         │
+│   email (UNIQUE)  │
+│   password        │
+│   name            │
+│   role            │
+│   isActive        │
+│   lastLogin       │
+│   createdAt       │
+│   updatedAt       │
+└─────────┬─────────┘
+          │
+          │ 1:1
+          ▼
+┌───────────────────┐         ┌───────────────────┐
+│   LEADERBOARD     │         │  KNOWLEDGE ASSETS │
+├───────────────────┤         ├───────────────────┤
+│ + id (PK)         │         │ + id (PK)         │
+│   userId (FK,UQ)  │◄────┐   │   title           │
+│   name            │     │   │   description     │
+│   role            │     │   │   category        │
+│   points          │     │   │   content         │
+│   submissions     │     │   │   author          │
+│   reviews         │     │   │   authorId (FK)   │◄──┐
+│   rank            │     │   │   status          │   │
+│   createdAt       │     │   │   reviewStatus    │   │
+│   updatedAt       │     │   │   reviewedBy      │   │
+└───────────────────┘     │   │   reviewComments  │   │
+                          │   │   tags            │   │
+                          │   │   createdAt       │   │
+┌───────────────────┐     │   │   updatedAt       │   │
+│   AUDIT ENTRIES   │     │   └─────────┬─────────┘   │
+├───────────────────┤     │             │             │
+│ + id (PK)         │     │             │ 1:1         │
+│   action          │     │             ▼             │
+│   userId (FK)     │─────┘   ┌───────────────────┐   │
+│   userName        │         │   REPOSITORY      │   │
+│   targetType      │         ├───────────────────┤   │
+│   targetId        │         │ + id (PK)         │   │
+│   changes         │         │   assetId (FK,UQ) │───┘
+│   timestamp       │         │   title           │
+└───────────────────┘         │   category        │
+                              │   status          │
+┌───────────────────┐         │   createdAt       │
+│   CONSULTANTS     │         │   updatedAt       │
+├───────────────────┤         └───────────────────┘
+│ + id (PK)         │
+│   name            │
+│   email (UNIQUE)  │
+│   password        │         ┌───────────────────┐
+│   role            │         │    TRAININGS      │
+│   department      │         ├───────────────────┤
+│   yearsOfExp      │         │ + id (PK)         │
+│   points          │         │   title           │
+│   contributions   │         │   description     │
+│   certifications  │         │   content         │
+│   createdAt       │         │   instructor      │
+│   updatedAt       │         │   duration        │
+└─────────┬─────────┘         │   level           │
+          │                   │   status          │
+          │ 1:N               │   tags            │
+          ▼                   │   createdAt       │
+┌───────────────────┐         │   updatedAt       │
+│ AI RECOMMENDATIONS│         └───────────────────┘
+├───────────────────┤
+│ + id (PK)         │         ┌───────────────────┐
+│   consultantId(FK)│         │     METADATA      │
+│   title           │         ├───────────────────┤
+│   description     │         │ + id (PK)         │
+│   type            │         │   key (UNIQUE)    │
+│   priority        │         │   value           │
+│   status          │         │   updatedAt       │
+│   createdAt       │         └───────────────────┘
+│   updatedAt       │
+└───────────────────┘
+      </pre>
+    </div>
+  </div>
+
+  <script>
+    function filterTables() {
+      const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+      const tables = document.querySelectorAll('.table-card');
+      
+      tables.forEach(table => {
+        const text = table.textContent.toLowerCase();
+        table.style.display = text.includes(searchTerm) ? 'block' : 'none';
+      });
+    }
+
+    function showAllTables() {
+      document.getElementById('searchBox').value = '';
+      filterTables();
+    }
+
+    function exportSchema() {
+      const schema = {
+        database: 'Velion DKN',
+        type: 'SQLite3',
+        version: '1.0.0',
+        tables: []
+      };
+
+      document.querySelectorAll('.table-card').forEach(card => {
+        const tableName = card.dataset.table;
+        const columns = [];
+        
+        card.querySelectorAll('.column').forEach(col => {
+          const name = col.querySelector('.column-name').textContent;
+          const type = col.querySelector('.column-type').textContent;
+          const constraints = Array.from(col.querySelectorAll('.column-constraint')).map(c => c.textContent);
+          
+          columns.push({ name, type, constraints });
+        });
+
+        schema.tables.push({ name: tableName, columns });
+      });
+
+      const dataStr = JSON.stringify(schema, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'velion-dkn-schema.json';
+      link.click();
+      URL.revokeObjectURL(url);
+
+      alert('✅ Schema exported successfully!');
+    }
+
+    function toggleDiagram() {
+      const diagram = document.getElementById('erDiagram');
+      diagram.style.display = diagram.style.display === 'none' ? 'block' : 'none';
+    }
+
+    console.log('🗄️ Database Schema Viewer loaded');
+    console.log('9 tables defined with 75+ columns');
+  </script>
+</body>
+</html>

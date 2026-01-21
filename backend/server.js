@@ -15,6 +15,27 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`\n[${timestamp}] ${req.method} ${req.url}`);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+  }
+  
+  // Log response
+  const originalSend = res.send;
+  res.send = function(data) {
+    console.log(`Response Status: ${res.statusCode}`);
+    console.log('Response:', typeof data === 'string' ? data.substring(0, 200) : JSON.stringify(data).substring(0, 200));
+    console.log('---'.repeat(20));
+    originalSend.apply(res, arguments);
+  };
+  
+  next();
+});
+
 // Authentication Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -173,14 +194,9 @@ app.post('/api/knowledge-assets', authenticateToken, async (req, res) => {
   try {
     const { title, contentType, description, tags, region } = req.body;
 
-    if (!title || !description) {
-      return res.status(400).json({ error: 'Title and description are required' });
-    }
-
     const newAsset = await db.insert('knowledgeAssets', {
       title,
       description,
-      category: contentType || 'Document',
       content: description,
       author: req.user.name,
       authorId: req.user.id,
@@ -363,13 +379,13 @@ app.get('/api/leaderboard', authenticateToken, async (req, res) => {
 
 // Get all trainings
 app.get('/api/trainings', authenticateToken, async (req, res) => {
-  const trainings = db.findAll('trainings');
+  const trainings = await db.findAll('trainings');
   res.json(trainings);
 });
 
 // Complete training
 app.post('/api/trainings/:id/complete', authenticateToken, async (req, res) => {
-  const training = db.findById('trainings', req.params.id);
+  const training = await db.findById('trainings', req.params.id);
   
   if (!training) {
     return res.status(404).json({ error: 'Training not found' });

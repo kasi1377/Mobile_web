@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Debug Monitor - Velion DKN</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #4ec9b0;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .controls {
+      background: #252526;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button {
+      background: #0e639c;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #1177bb;
+    }
+
+    button.danger {
+      background: #f48771;
+    }
+
+    button.danger:hover {
+      background: #ff6b6b;
+    }
+
+    button.success {
+      background: #4ec9b0;
+    }
+
+    button.success:hover {
+      background: #5fd4bb;
+    }
+
+    .stats {
+      background: #252526;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .stat-item {
+      background: #2d2d30;
+      padding: 10px;
+      border-radius: 4px;
+      border-left: 3px solid #4ec9b0;
+    }
+
+    .stat-label {
+      color: #858585;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      color: #4ec9b0;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .network-log {
+      background: #252526;
+      border-radius: 6px;
+      padding: 15px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .log-entry {
+      background: #2d2d30;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      overflow: hidden;
+      border-left: 4px solid #0e639c;
+    }
+
+    .log-entry.GET { border-left-color: #4ec9b0; }
+    .log-entry.POST { border-left-color: #dcdcaa; }
+    .log-entry.PUT { border-left-color: #569cd6; }
+    .log-entry.DELETE { border-left-color: #f48771; }
+    .log-entry.error { border-left-color: #f48771; background: #3d2626; }
+    .log-entry.success { border-left-color: #4ec9b0; }
+
+    .log-header {
+      padding: 10px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .log-header:hover {
+      background: #37373d;
+    }
+
+    .log-method {
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      display: inline-block;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .log-method.GET { background: #4ec9b0; color: #000; }
+    .log-method.POST { background: #dcdcaa; color: #000; }
+    .log-method.PUT { background: #569cd6; color: #000; }
+    .log-method.DELETE { background: #f48771; color: #000; }
+
+    .log-url {
+      flex: 1;
+      margin: 0 15px;
+      color: #9cdcfe;
+    }
+
+    .log-status {
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+
+    .log-status.success { background: #4ec9b0; color: #000; }
+    .log-status.error { background: #f48771; color: #000; }
+    .log-status.pending { background: #858585; color: #000; }
+
+    .log-time {
+      color: #858585;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+
+    .log-details {
+      display: none;
+      padding: 15px;
+      background: #1e1e1e;
+      border-top: 1px solid #3d3d3d;
+    }
+
+    .log-details.expanded {
+      display: block;
+    }
+
+    .detail-section {
+      margin-bottom: 15px;
+    }
+
+    .detail-title {
+      color: #569cd6;
+      font-weight: bold;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .detail-content {
+      background: #252526;
+      padding: 10px;
+      border-radius: 4px;
+      color: #ce9178;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .filter-input {
+      background: #3c3c3c;
+      border: 1px solid #555;
+      color: #d4d4d4;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 14px;
+      flex: 1;
+      max-width: 300px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #858585;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1e1e1e;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #424242;
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4e4e4e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌐 Network Debug Monitor</h1>
+
+    <div class="controls">
+      <button class="success" onclick="interceptFetch()">✓ Enable Monitoring</button>
+      <button onclick="clearLogs()">Clear Logs</button>
+      <button onclick="exportLogs()">Export Logs</button>
+      <input type="text" class="filter-input" id="filterInput" placeholder="Filter by URL or method..." oninput="filterLogs()">
+      <label style="color: #858585; margin-left: auto;">
+        <input type="checkbox" id="autoScroll" checked> Auto-scroll
+      </label>
+    </div>
+
+    <div class="stats">
+      <div class="stat-item">
+        <div class="stat-label">Total Requests</div>
+        <div class="stat-value" id="totalRequests">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Successful (2xx)</div>
+        <div class="stat-value" id="successRequests">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Errors (4xx/5xx)</div>
+        <div class="stat-value" id="errorRequests">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Average Time</div>
+        <div class="stat-value" id="avgTime">0ms</div>
+      </div>
+    </div>
+
+    <div class="network-log" id="networkLog">
+      <div class="empty-state">
+        Click "Enable Monitoring" and then interact with your application to see network requests here.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let requestLogs = [];
+    let requestIdCounter = 0;
+    let isMonitoring = false;
+    let originalFetch = window.fetch;
+
+    function interceptFetch() {
+      if (isMonitoring) {
+        alert('Monitoring is already enabled!');
+        return;
+      }
+
+      isMonitoring = true;
+      console.log('✓ Network monitoring enabled');
+
+      // Intercept fetch
+      window.fetch = async function(...args) {
+        const requestId = ++requestIdCounter;
+        const startTime = Date.now();
+        
+        let url = args[0];
+        let options = args[1] || {};
+        
+        if (typeof url === 'object') {
+          url = url.url;
+        }
+
+        const method = options.method || 'GET';
+        const headers = options.headers || {};
+        const body = options.body;
+
+        // Log request
+        const logEntry = {
+          id: requestId,
+          method: method,
+          url: url,
+          headers: headers,
+          requestBody: body,
+          timestamp: new Date().toISOString(),
+          startTime: startTime,
+          status: 'pending'
+        };
+
+        requestLogs.push(logEntry);
+        renderLog(logEntry);
+        updateStats();
+
+        try {
+          const response = await originalFetch.apply(this, args);
+          const endTime = Date.now();
+          const duration = endTime - startTime;
+
+          // Clone response to read body
+          const clonedResponse = response.clone();
+          let responseBody;
+          
+          try {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              responseBody = await clonedResponse.json();
+            } else {
+              responseBody = await clonedResponse.text();
+            }
+          } catch (e) {
+            responseBody = 'Unable to parse response';
+          }
+
+          // Update log entry
+          logEntry.status = response.status;
+          logEntry.statusText = response.statusText;
+          logEntry.responseHeaders = Object.fromEntries(response.headers.entries());
+          logEntry.responseBody = responseBody;
+          logEntry.duration = duration;
+
+          updateLogEntry(logEntry);
+          updateStats();
+
+          return response;
+        } catch (error) {
+          const endTime = Date.now();
+          const duration = endTime - startTime;
+
+          logEntry.status = 'error';
+          logEntry.error = error.message;
+          logEntry.duration = duration;
+
+          updateLogEntry(logEntry);
+          updateStats();
+
+          throw error;
+        }
+      };
+
+      alert('✓ Network monitoring enabled! All fetch requests will now be logged.');
+    }
+
+    function renderLog(entry) {
+      const logContainer = document.getElementById('networkLog');
+      
+      // Remove empty state
+      if (logContainer.querySelector('.empty-state')) {
+        logContainer.innerHTML = '';
+      }
+
+      const statusClass = entry.status === 'pending' ? 'pending' : 
+                         (entry.status >= 200 && entry.status < 300) ? 'success' : 'error';
+
+      const logDiv = document.createElement('div');
+      logDiv.className = `log-entry ${entry.method} ${statusClass}`;
+      logDiv.id = `log-${entry.id}`;
+      logDiv.innerHTML = `
+        <div class="log-header" onclick="toggleDetails(${entry.id})">
+          <span class="log-method ${entry.method}">${entry.method}</span>
+          <span class="log-url">${entry.url}</span>
+          <span class="log-status ${statusClass}">${entry.status}</span>
+          <span class="log-time">${entry.duration ? entry.duration + 'ms' : '...'}</span>
+        </div>
+        <div class="log-details" id="details-${entry.id}">
+          <div class="detail-section">
+            <div class="detail-title">Request Headers</div>
+            <div class="detail-content">${JSON.stringify(entry.headers, null, 2)}</div>
+          </div>
+          ${entry.requestBody ? `
+            <div class="detail-section">
+              <div class="detail-title">Request Body</div>
+              <div class="detail-content">${typeof entry.requestBody === 'string' ? entry.requestBody : JSON.stringify(entry.requestBody, null, 2)}</div>
+            </div>
+          ` : ''}
+          ${entry.responseHeaders ? `
+            <div class="detail-section">
+              <div class="detail-title">Response Headers</div>
+              <div class="detail-content">${JSON.stringify(entry.responseHeaders, null, 2)}</div>
+            </div>
+          ` : ''}
+          ${entry.responseBody ? `
+            <div class="detail-section">
+              <div class="detail-title">Response Body</div>
+              <div class="detail-content">${typeof entry.responseBody === 'string' ? entry.responseBody : JSON.stringify(entry.responseBody, null, 2)}</div>
+            </div>
+          ` : ''}
+          ${entry.error ? `
+            <div class="detail-section">
+              <div class="detail-title">Error</div>
+              <div class="detail-content" style="color: #f48771;">${entry.error}</div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      logContainer.insertBefore(logDiv, logContainer.firstChild);
+
+      // Auto-scroll
+      if (document.getElementById('autoScroll').checked) {
+        logContainer.scrollTop = 0;
+      }
+    }
+
+    function updateLogEntry(entry) {
+      const logDiv = document.getElementById(`log-${entry.id}`);
+      if (!logDiv) return;
+
+      const statusClass = entry.status === 'error' ? 'error' : 
+                         (entry.status >= 200 && entry.status < 300) ? 'success' : 'error';
+
+      logDiv.className = `log-entry ${entry.method} ${statusClass}`;
+      
+      const statusSpan = logDiv.querySelector('.log-status');
+      statusSpan.textContent = entry.status;
+      statusSpan.className = `log-status ${statusClass}`;
+
+      const timeSpan = logDiv.querySelector('.log-time');
+      timeSpan.textContent = entry.duration ? entry.duration + 'ms' : '';
+
+      // Update details
+      const detailsDiv = document.getElementById(`details-${entry.id}`);
+      detailsDiv.innerHTML = `
+        <div class="detail-section">
+          <div class="detail-title">Request Headers</div>
+          <div class="detail-content">${JSON.stringify(entry.headers, null, 2)}</div>
+        </div>
+        ${entry.requestBody ? `
+          <div class="detail-section">
+            <div class="detail-title">Request Body</div>
+            <div class="detail-content">${typeof entry.requestBody === 'string' ? entry.requestBody : JSON.stringify(JSON.parse(entry.requestBody), null, 2)}</div>
+          </div>
+        ` : ''}
+        ${entry.responseHeaders ? `
+          <div class="detail-section">
+            <div class="detail-title">Response Headers</div>
+            <div class="detail-content">${JSON.stringify(entry.responseHeaders, null, 2)}</div>
+          </div>
+        ` : ''}
+        ${entry.responseBody ? `
+          <div class="detail-section">
+            <div class="detail-title">Response Body</div>
+            <div class="detail-content">${typeof entry.responseBody === 'string' ? entry.responseBody : JSON.stringify(entry.responseBody, null, 2)}</div>
+          </div>
+        ` : ''}
+        ${entry.error ? `
+          <div class="detail-section">
+            <div class="detail-title">Error</div>
+            <div class="detail-content" style="color: #f48771;">${entry.error}</div>
+          </div>
+        ` : ''}
+      `;
+    }
+
+    function toggleDetails(id) {
+      const details = document.getElementById(`details-${id}`);
+      details.classList.toggle('expanded');
+    }
+
+    function updateStats() {
+      const total = requestLogs.length;
+      const successful = requestLogs.filter(r => r.status >= 200 && r.status < 300).length;
+      const errors = requestLogs.filter(r => r.status >= 400 || r.status === 'error').length;
+      const durations = requestLogs.filter(r => r.duration).map(r => r.duration);
+      const avgDuration = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
+
+      document.getElementById('totalRequests').textContent = total;
+      document.getElementById('successRequests').textContent = successful;
+      document.getElementById('errorRequests').textContent = errors;
+      document.getElementById('avgTime').textContent = avgDuration + 'ms';
+    }
+
+    function clearLogs() {
+      if (confirm('Clear all network logs?')) {
+        requestLogs = [];
+        document.getElementById('networkLog').innerHTML = '<div class="empty-state">Logs cleared. Waiting for new requests...</div>';
+        updateStats();
+      }
+    }
+
+    function exportLogs() {
+      const dataStr = JSON.stringify(requestLogs, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `network-logs-${new Date().toISOString()}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function filterLogs() {
+      const filterText = document.getElementById('filterInput').value.toLowerCase();
+      const logs = document.querySelectorAll('.log-entry');
+      
+      logs.forEach(log => {
+        const text = log.textContent.toLowerCase();
+        log.style.display = text.includes(filterText) ? 'block' : 'none';
+      });
+    }
+
+    console.log('🌐 Network Debug Monitor loaded');
+    console.log('Click "Enable Monitoring" button to start intercepting fetch requests');
+  </script>
+</body>
+</html>

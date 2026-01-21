@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Endpoint Testing - Velion DKN</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #111827 0%, #374151 100%);
+      min-height: 100vh;
+      padding: 2rem;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      color: #6b7280;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .token-section {
+      background: #fef3c7;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      border: 2px solid #fbbf24;
+    }
+
+    .token-input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 2px solid #d1d5db;
+      border-radius: 6px;
+      font-family: monospace;
+      margin-top: 0.5rem;
+    }
+
+    .endpoint-section {
+      margin-bottom: 2rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 1.5rem;
+      background: #f9fafb;
+    }
+
+    .endpoint-section h2 {
+      color: #374151;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+
+    .endpoint-group {
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .endpoint-title {
+      font-weight: bold;
+      color: #4b5563;
+      margin-bottom: 0.5rem;
+    }
+
+    .method {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.875rem;
+      margin-right: 0.5rem;
+    }
+
+    .method.get { background: #dbeafe; color: #1e40af; }
+    .method.post { background: #dcfce7; color: #15803d; }
+    .method.put { background: #fef3c7; color: #a16207; }
+    .method.delete { background: #fee2e2; color: #b91c1c; }
+
+    .endpoint-path {
+      font-family: monospace;
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 0.5rem;
+      border: 2px solid #d1d5db;
+      border-radius: 6px;
+      margin: 0.5rem 0;
+      font-family: inherit;
+    }
+
+    textarea {
+      font-family: monospace;
+      min-height: 80px;
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+      margin-right: 0.5rem;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+
+    button.secondary {
+      background: #6b7280;
+    }
+
+    button.secondary:hover {
+      background: #4b5563;
+    }
+
+    .response {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #1f2937;
+      color: #10b981;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.875rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: 400px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .response.show {
+      display: block;
+    }
+
+    .response.error {
+      color: #ef4444;
+    }
+
+    .info {
+      background: #dbeafe;
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 2rem;
+      border: 2px solid #3b82f6;
+      color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔌 API Endpoint Testing</h1>
+    
+    <div class="info">
+      <strong>Base URL:</strong> http://localhost:3002<br>
+      <strong>Instructions:</strong> Open browser console (F12) to see detailed logs. Test endpoints below or use the browser console directly.
+    </div>
+
+    <div class="token-section">
+      <strong>🔑 Authentication Token</strong>
+      <input type="text" id="globalToken" class="token-input" placeholder="Token will be saved here after login...">
+    </div>
+
+    <!-- AUTHENTICATION -->
+    <div class="endpoint-section">
+      <h2>🔐 Authentication</h2>
+      
+      <div class="endpoint-group">
+        <div class="endpoint-title">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/auth/login</span>
+        </div>
+        <input type="text" id="loginEmail" placeholder="Email" value="test@velion.com">
+        <input type="text" id="loginPassword" placeholder="Password" value="password123">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="loginResponse" class="response"></div>
+      </div>
+
+      <div class="endpoint-group">
+        <div class="endpoint-title">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/auth/signup</span>
+        </div>
+        <input type="text" id="signupName" placeholder="Name" value="Test User">
+        <input type="text" id="signupEmail" placeholder="Email" value="newuser@velion.com">
+        <input type="text" id="signupPassword" placeholder="Password" value="password123">
+        <button onclick="testSignup()">Test Signup</button>
+        <div id="signupResponse" class="response"></div>
+      </div>
+
+      <div class="endpoint-group">
+        <div class="endpoint-title">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/api/auth/me</span>
+        </div>
+        <button onclick="testGetMe()">Get Current User</button>
+        <div id="meResponse" class="response"></div>
+      </div>
+    </div>
+
+    <!-- KNOWLEDGE ASSETS -->
+    <div class="endpoint-section">
+      <h2>📚 Knowledge Assets</h2>
+      
+      <div class="endpoint-group">
+        <div class="endpoint-title">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/api/knowledge-assets</span>
+        </div>
+        <button onclick="testGetAssets()">Get All Assets</button>
+        <div id="assetsResponse" class="response"></div>
+      </div>
+
+      <div class="endpoint-group">
+        <div class="endpoint-title">
+          <span class="method post">POST</span>
+          <span class="endpoint-path">/api/knowledge-assets</span>
+        </div>
+        <input type="text" id="assetTitle" placeholder="Title" value="Test Knowledge Asset">
+        <textarea id="assetDescription" placeholder="Description">This is a test knowledge asset created via API testing.</textarea>
+        <input type="text" id="assetType" placeholder="Content Type" value="Document">
+        <button onclick="testCreateAsset()">Create Asset</button>
+        <div id="createAssetResponse" class="response"></div>
+      </div>
+
+      <div class="endpoint-group">
+        <div class="endpoint-title">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/api/knowledge-assets/:id</span>
+        </div>
+        <input type="text" id="assetId" placeholder="Asset ID" value="1">
+        <button onclick="testGetAssetById()">Get Asset by ID</button>
+        <div id="assetByIdResponse" class="response"></div>
+      </div>
+    </div>
+
+    <!-- LEADERBOARD & STATS -->
+    <div class="endpoint-section">
+      <h2>🏆 Leaderboard & Statistics</h2>
+      
+      <div class="endpoint-group">
+        <div class="endpoint-title">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/api/leaderboard</span>
+        </div>
+        <button onclick="testGetLeaderboard()">Get Leaderboard</button>
+        <div id="leaderboardResponse" class="response"></div>
+      </div>
+
+      <div class="endpoint-group">
+        <div class="endpoint-title">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/api/statistics</span>
+        </div>
+        <button onclick="testGetStatistics()">Get Statistics</button>
+        <div id="statisticsResponse" class="response"></div>
+      </div>
+    </div>
+
+    <!-- TRAININGS -->
+    <div class="endpoint-section">
+      <h2>🎓 Trainings</h2>
+      
+      <div class="endpoint-group">
+        <div class="endpoint-title">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/api/trainings</span>
+        </div>
+        <button onclick="testGetTrainings()">Get All Trainings</button>
+        <div id="trainingsResponse" class="response"></div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="endpoint-section">
+      <h2>⚙️ Admin</h2>
+      
+      <div class="endpoint-group">
+        <div class="endpoint-title">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/api/admin/tables</span>
+        </div>
+        <button onclick="testGetTables()">Get Database Tables</button>
+        <div id="tablesResponse" class="response"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3002';
+    let globalToken = '';
+
+    // Update token input when changed
+    document.getElementById('globalToken').addEventListener('input', (e) => {
+      globalToken = e.target.value;
+    });
+
+    // Helper to show response
+    function showResponse(elementId, data, isError = false) {
+      const element = document.getElementById(elementId);
+      element.textContent = JSON.stringify(data, null, 2);
+      element.classList.add('show');
+      element.classList.toggle('error', isError);
+      console.log(`[${elementId}]`, data);
+    }
+
+    // Helper for API calls
+    async function apiCall(endpoint, options = {}) {
+      try {
+        const response = await fetch(`${API_BASE}${endpoint}`, options);
+        const data = await response.json();
+        return { success: response.ok, data, status: response.status };
+      } catch (error) {
+        return { success: false, data: { error: error.message }, status: 0 };
+      }
+    }
+
+    // AUTHENTICATION TESTS
+    async function testLogin() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
+      const result = await apiCall('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      showResponse('loginResponse', result.data, !result.success);
+      
+      if (result.success && result.data.token) {
+        globalToken = result.data.token;
+        document.getElementById('globalToken').value = globalToken;
+        alert('✅ Login successful! Token saved.');
+      }
+    }
+
+    async function testSignup() {
+      const name = document.getElementById('signupName').value;
+      const email = document.getElementById('signupEmail').value;
+      const password = document.getElementById('signupPassword').value;
+
+      const result = await apiCall('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role: 'Consultant' })
+      });
+
+      showResponse('signupResponse', result.data, !result.success);
+    }
+
+    async function testGetMe() {
+      if (!globalToken) {
+        alert('⚠️ Please login first to get a token!');
+        return;
+      }
+
+      const result = await apiCall('/api/auth/me', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${globalToken}` }
+      });
+
+      showResponse('meResponse', result.data, !result.success);
+    }
+
+    // KNOWLEDGE ASSETS TESTS
+    async function testGetAssets() {
+      if (!globalToken) {
+        alert('⚠️ Please login first to get a token!');
+        return;
+      }
+
+      const result = await apiCall('/api/knowledge-assets', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${globalToken}` }
+      });
+
+      showResponse('assetsResponse', result.data, !result.success);
+    }
+
+    async function testCreateAsset() {
+      if (!globalToken) {
+        alert('⚠️ Please login first to get a token!');
+        return;
+      }
+
+      const title = document.getElementById('assetTitle').value;
+      const description = document.getElementById('assetDescription').value;
+      const contentType = document.getElementById('assetType').value;
+
+      const result = await apiCall('/api/knowledge-assets', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${globalToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ title, description, contentType, tags: ['test'] })
+      });
+
+      showResponse('createAssetResponse', result.data, !result.success);
+    }
+
+    async function testGetAssetById() {
+      if (!globalToken) {
+        alert('⚠️ Please login first to get a token!');
+        return;
+      }
+
+      const id = document.getElementById('assetId').value;
+
+      const result = await apiCall(`/api/knowledge-assets/${id}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${globalToken}` }
+      });
+
+      showResponse('assetByIdResponse', result.data, !result.success);
+    }
+
+    // LEADERBOARD & STATS TESTS
+    async function testGetLeaderboard() {
+      if (!globalToken) {
+        alert('⚠️ Please login first to get a token!');
+        return;
+      }
+
+      const result = await apiCall('/api/leaderboard', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${globalToken}` }
+      });
+
+      showResponse('leaderboardResponse', result.data, !result.success);
+    }
+
+    async function testGetStatistics() {
+      if (!globalToken) {
+        alert('⚠️ Please login first to get a token!');
+        return;
+      }
+
+      const result = await apiCall('/api/statistics', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${globalToken}` }
+      });
+
+      showResponse('statisticsResponse', result.data, !result.success);
+    }
+
+    // TRAININGS TESTS
+    async function testGetTrainings() {
+      if (!globalToken) {
+        alert('⚠️ Please login first to get a token!');
+        return;
+      }
+
+      const result = await apiCall('/api/trainings', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${globalToken}` }
+      });
+
+      showResponse('trainingsResponse', result.data, !result.success);
+    }
+
+    // ADMIN TESTS
+    async function testGetTables() {
+      const result = await apiCall('/api/admin/tables', {
+        method: 'GET'
+      });
+
+      showResponse('tablesResponse', result.data, !result.success);
+    }
+
+    console.log('✅ API Testing page loaded! All functions available in console.');
+    console.log('Available test functions:', [
+      'testLogin()',
+      'testSignup()',
+      'testGetMe()',
+      'testGetAssets()',
+      'testCreateAsset()',
+      'testGetAssetById()',
+      'testGetLeaderboard()',
+      'testGetStatistics()',
+      'testGetTrainings()',
+      'testGetTables()'
+    ]);
+  </script>
+</body>
+</html>

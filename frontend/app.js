@@ -102,7 +102,7 @@ const api = {
   },
 
   completeTraining: async (token, trainingId) => {
-    const res = await fetch(`${API_URL}/trainings/${trainingId}/complete`, {
+    const res = await fetch(`${API_URL}/api/trainings/${trainingId}/complete`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });
