@@ -40,15 +40,25 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log('Auth: login attempt', { email });
+
+    if (!email || !password) {
+      console.warn('Auth: missing email/password');
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
     const user = await db.findOne('users', { email });
 
     if (!user) {
+      console.warn('Auth: user not found', { email });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
+    console.log('Auth: password check', { email, validPassword });
 
     if (!validPassword) {
+      console.warn('Auth: invalid password', { email });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -60,8 +70,10 @@ app.post('/api/auth/login', async (req, res) => {
 
     const { password: _, ...userWithoutPassword } = user;
 
+    console.log('Auth: login success', { userId: user.id, email: user.email, role: user.role });
     res.json({ token, user: userWithoutPassword });
   } catch (error) {
+    console.error('Auth: login error', error);
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -298,7 +310,7 @@ app.get('/api/knowledge-assets/my/submissions', authenticateToken, async (req, r
 
 // Search knowledge assets
 app.get('/api/knowledge-assets/search/:term', authenticateToken, async (req, res) => {
-  const results = db.search('knowledgeAssets', req.params.term);
+  const results = await db.search('knowledgeAssets', req.params.term);
   res.json(results);
 });
 
@@ -525,6 +537,28 @@ app.post('/api/admin/documents/:id/reject', authenticateToken, async (req, res) 
 
 // Get dashboard statistics
 app.get('/api/statistics', authenticateToken, async (req, res) => {
+  const allAssets = await db.findAll('knowledgeAssets');
+  
+  // Category distribution
+  const categoryCount = {};
+  allAssets.forEach(asset => {
+    const cat = asset.category || asset.contentType || 'Unknown';
+    categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+  });
+
+  // Top contributors
+  const contributorCount = {};
+  allAssets.forEach(asset => {
+    if (asset.authorId) {
+      contributorCount[asset.authorId] = (contributorCount[asset.authorId] || 0) + 1;
+    }
+  });
+  
+  const topContributors = Object.entries(contributorCount)
+    .map(([userId, count]) => ({ userId, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
   const stats = {
     totalAssets: await db.count('knowledgeAssets'),
     approvedAssets: await db.count('knowledgeAssets', { status: 'approved' }),
@@ -532,7 +566,9 @@ app.get('/api/statistics', authenticateToken, async (req, res) => {
     totalConsultants: await db.count('users'),
     totalTrainings: await db.count('trainings'),
     totalDownloads: 0,
-    totalViews: 0
+    totalViews: 0,
+    categoryDistribution: categoryCount,
+    topContributors: topContributors
   };
   
   res.json(stats);
